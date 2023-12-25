@@ -1,4 +1,4 @@
-import Cactus from "./Cactus";
+import Cactus from "./Cactus.js";
 
 export default class CactusController {
   CACTUS_INTERVAL_MIN = 500;
@@ -45,6 +45,8 @@ export default class CactusController {
       cactusImageFromArray.height,
       cactusImageFromArray.image
     );
+
+    this.cacti.push(cactusFromClass);
   }
 
   update(gameSpeed, frameTimeDelta) {
@@ -54,7 +56,23 @@ export default class CactusController {
       this.setNextCactus();
     }
     this.nextCactus -= frameTimeDelta;
+
+    this.cacti.forEach((cactus) =>
+      cactus.update(this.speed, gameSpeed, frameTimeDelta, this.scaleRatio)
+    );
+
+    this.cacti = this.cacti.filter((cactus) => cactus.x > -cactus.width);
   }
 
-  draw() {}
+  draw() {
+    this.cacti.forEach((cactus) => cactus.draw());
+  }
+
+  collide(player) {
+    return this.cacti.some((cactus) => cactus.collide(player));
+  }
+
+  reset() {
+    this.cacti = [];
+  }
 }

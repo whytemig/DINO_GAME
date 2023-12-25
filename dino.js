@@ -1,12 +1,13 @@
 import Player from "./PlayerClass.js";
 import Ground from "./GroundClass.js";
 import CactusController from "./CactusController.js";
+import Score from "./Score.js";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 
 // GAME SPEED
-const gameStartSpeed = 0.75;
+const gameStartSpeed = 1;
 const gameSpeedIncrement = 0.0001;
 
 // GAME SCREEN
@@ -41,16 +42,22 @@ const CACTUS_CONFIG = [
   },
 ];
 
-// GAME OBJECTS
+// GAME OBJECTS******************
 let player = null;
 let ground = null;
 let cactcontroller = null;
-
 let scaleRatio = null;
 //variable to calculate the frame time
 let previousTime = null;
 let gameSpeed = gameStartSpeed;
+let gameOver = false;
+let addAnEventListener = false;
+let waitingToStart = true;
+let score = null;
 
+//FUNCTIONS*********************************************************
+
+//CREATE ITEMS ON CANVAS FUNCTION*****************************************
 function createSprites() {
   const playerIngameWidth = playerWidth * scaleRatio;
   const playerIngameheight = playerHeight * scaleRatio;
@@ -93,6 +100,8 @@ function createSprites() {
     scaleRatio,
     groundAndCatusSpeed
   );
+
+  score = new Score(ctx, scaleRatio);
 }
 
 function setScreen() {
@@ -128,13 +137,59 @@ function getScaleRatio() {
     screenHeight / GAMEHEIGHT;
   }
 }
-
+// DRAW ON CANVAS FUNCTION*********************************************
 function clearScreen() {
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// GAME LOOP
+// GAME OVER FUNCTION****************************************************
+function showGameOver() {
+  const fontSize = 70 * scaleRatio;
+  ctx.font = `${fontSize}px Roboto`;
+  ctx.fillStyle = "grey";
+  const x = canvas.width / 4.5;
+  const y = canvas.height / 2;
+  ctx.fillText("Game Over 😭", x, y);
+}
+
+// RESET GAME************************************************************
+function gameResetFunc() {
+  if (!addAnEventListener) {
+    addAnEventListener = true;
+
+    setTimeout(() => {
+      window.addEventListener("keyup", resetGame, { once: true });
+      window.addEventListener("touchstart", resetGame, { once: true });
+    }, 1500);
+  }
+}
+//RESET GAME FUNCTION *****************************************************
+function resetGame() {
+  addAnEventListener = false;
+  gameOver = false;
+  waitingToStart = false;
+  ground.reset();
+  cactcontroller.reset();
+  score.reset();
+  gameSpeed = gameStartSpeed;
+}
+//SHOW GAME TEXT ***********************************************************
+function showStartGameText() {
+  const fontSize = 40 * scaleRatio;
+  ctx.font = `${fontSize}px Roboto`;
+  ctx.fillStyle = "grey";
+  const x = canvas.width / 5;
+  const y = canvas.height / 2;
+  ctx.fillText("Press Space or Screen to Start", x, y);
+}
+//CHANGE GAME SPEED AS YOU PLAY*********************************************
+
+function changeGameSpeed(frameTimeDelta) {
+  gameSpeed += frameTimeDelta * gameSpeedIncrement;
+}
+
+// GAME LOOP*************************************************************
 function gameLoop(currentTime) {
   if (!previousTime) {
     previousTime = currentTime;
@@ -144,16 +199,40 @@ function gameLoop(currentTime) {
   const frameTimeDelta = currentTime - previousTime;
   previousTime = currentTime;
   clearScreen();
-  //UPDATING THE GAME OBJECTS
-  ground.update(gameSpeed, frameTimeDelta);
-  cactcontroller.update(gameSpeed, frameTimeDelta);
-  player.update(gameSpeed, frameTimeDelta);
+  //UPDATING THE GAME OBJECTS******* if statement for game over using a boolean
+  if (!gameOver && !waitingToStart) {
+    ground.update(gameSpeed, frameTimeDelta);
+    cactcontroller.update(gameSpeed, frameTimeDelta);
+    player.update(gameSpeed, frameTimeDelta);
+    score.update(frameTimeDelta);
+    changeGameSpeed(frameTimeDelta);
+  }
 
-  //DRAW GAME OBJECTS
+  if (!gameOver && cactcontroller.collide(player)) {
+    gameOver = true;
+    gameResetFunc();
+    score.setHighScore();
+  }
+
+  //DRAW GAME OBJECTS**********************************************************
   ground.draw();
   cactcontroller.draw();
   player.draw();
+  score.draw();
+
+  if (gameOver) {
+    showGameOver();
+  }
+
+  if (waitingToStart) {
+    showStartGameText();
+  }
+
+  // GAME LOOP FUNCTION TRICK**************************************************
   requestAnimationFrame(gameLoop);
 }
 
 requestAnimationFrame(gameLoop);
+
+window.addEventListener("keyup", resetGame, { once: true });
+window.addEventListener("touchstart", resetGame, { once: true });
